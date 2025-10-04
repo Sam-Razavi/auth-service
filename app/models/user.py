@@ -28,3 +28,6 @@ class User(Base):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(  # noqa: F821
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
+    oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(  # noqa: F821
+        "OAuthAccount", back_populates="user", cascade="all, delete-orphan"
+    )
