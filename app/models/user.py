@@ -6,6 +6,7 @@ from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.role import user_roles
 
 
 class User(Base):
@@ -30,4 +31,7 @@ class User(Base):
     )
     oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(  # noqa: F821
         "OAuthAccount", back_populates="user", cascade="all, delete-orphan"
+    )
+    roles: Mapped[list["Role"]] = relationship(  # noqa: F821
+        "Role", secondary=user_roles, lazy="selectin"
     )
