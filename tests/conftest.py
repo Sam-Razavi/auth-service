@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
+from app.models.role import Role
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -49,6 +50,17 @@ def mock_redis():
 
     with patch("app.utils.redis.get_redis", side_effect=fake_get_redis):
         yield redis_mock
+
+
+@pytest_asyncio.fixture
+async def roles(db) -> dict[str, Role]:
+    """Seed the three default roles into the test database."""
+    admin = Role(name="admin")
+    user_role = Role(name="user")
+    mod = Role(name="moderator")
+    db.add_all([admin, user_role, mod])
+    await db.commit()
+    return {"admin": admin, "user": user_role, "moderator": mod}
 
 
 @pytest_asyncio.fixture
