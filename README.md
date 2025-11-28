@@ -9,7 +9,7 @@ Other apps delegate all auth to this service — they never handle passwords or 
 |-------|--------|---------|
 | 1 — Core JWT | **Done** | Register, login, refresh, logout, /me |
 | 2 — OAuth2 | **Done** | GitHub + Google login, account linking |
-| 3 — RBAC | Planned | Roles, admin endpoints |
+| 3 — RBAC | **Done** | Roles, admin endpoints, role assignment |
 | 4 — Password reset | Planned | Email-based forgot/reset flow |
 | 5 — Polish | Planned | Rate limiting, logging, CI, GHCR image |
 
@@ -25,6 +25,14 @@ Other apps delegate all auth to this service — they never handle passwords or 
 - CSRF protection via single-use state tokens stored in Redis (10-minute TTL)
 - `oauth_accounts` table links multiple providers to one user account
 - OAuth-created users are marked `is_verified=True` automatically
+
+**Phase 3 features:**
+- Role-based access control (admin, user, moderator) via `roles` many-to-many table
+- `require_role()` dependency factory — attach to any route to gate by role
+- `/auth/me` now includes the user's assigned roles
+- Admin-only endpoints: list users, get user, assign roles, deactivate user
+- Default roles seeded via Alembic migration (no manual SQL needed)
+- Soft-delete deactivation — deactivated users cannot log in
 
 ---
 
@@ -113,6 +121,19 @@ GET /health
 | `GET` | `/oauth/google` | `307` redirect to Google |
 | `GET` | `/oauth/google/callback?code=…&state=…` | `200 TokenPair` |
 
+### Admin endpoints
+
+All admin endpoints require a valid Bearer token from a user with the `admin` role.
+
+| Method | Path | Body | Returns |
+|--------|------|------|---------|
+| `GET` | `/admin/users?skip=0&limit=50` | — | `200 list[UserResponse]` |
+| `GET` | `/admin/users/{id}` | — | `200 UserResponse` or `404` |
+| `PUT` | `/admin/users/{id}/roles` | `{"roles": ["moderator"]}` | `200 UserResponse` |
+| `DELETE` | `/admin/users/{id}` | — | `204` or `404` |
+
+Role assignment fully replaces the user's current role set. Pass `{"roles": []}` to clear all roles.
+
 **TokenPair response:**
 ```json
 {
@@ -129,7 +150,8 @@ GET /health
   "email": "user@example.com",
   "is_active": true,
   "is_verified": false,
-  "created_at": "2025-09-03T09:00:00Z"
+  "created_at": "2025-09-03T09:00:00Z",
+  "roles": ["admin"]
 }
 ```
 
@@ -166,6 +188,35 @@ identically to one issued by `/auth/login`.
 **Account linking:** if the GitHub/Google email matches an existing password-based
 account, the OAuth login is automatically linked to that account — the user ends
 up with one account accessible via both methods.
+
+---
+
+## RBAC integration
+
+### Assigning roles
+
+Roles are assigned by an admin via `PUT /admin/users/{id}/roles`. There is no self-service endpoint — role changes must go through a user with the `admin` role.
+
+### Protecting routes in downstream services
+
+If your app delegates auth to this service, check the `roles` field returned by `GET /auth/me`:
+
+```python
+# Example: gate a route in ApplyLuma
+me = requests.get("http://auth-service/auth/me", headers={"Authorization": f"Bearer {token}"})
+if "admin" not in me.json().get("roles", []):
+    return 403
+```
+
+### Seeded roles
+
+Three roles are seeded automatically by the `alembic upgrade head` migration:
+
+| Role | Purpose |
+|------|---------|
+| `admin` | Full access to `/admin/*` endpoints |
+| `user` | Standard authenticated user (no special privileges) |
+| `moderator` | Reserved for content moderation features (Phase 5) |
 
 ---
 
