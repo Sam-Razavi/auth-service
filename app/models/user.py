@@ -35,3 +35,6 @@ class User(Base):
     roles: Mapped[list["Role"]] = relationship(  # noqa: F821
         "Role", secondary=user_roles, lazy="selectin"
     )
+    reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(  # noqa: F821
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
+    )
