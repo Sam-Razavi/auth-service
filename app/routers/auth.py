@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.auth import LoginRequest
+from app.schemas.auth import ForgotPasswordRequest, LoginRequest, ResetPasswordRequest
 from app.schemas.token import LogoutRequest, RefreshRequest, TokenPair
 from app.schemas.user import UserCreate, UserResponse
+from app.services import password_reset_service
 from app.services.auth_service import authenticate_user, register_user
 from app.services.token_service import (
     create_token_pair,
@@ -32,6 +33,7 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
         user = await register_user(data, db)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    await password_reset_service.send_verification_token(user.id, user.email, db)
     return user
 
 
@@ -94,16 +96,29 @@ async def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.post("/verify-email/{token}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def verify_email(token: str):
-    raise HTTPException(status_code=501, detail="Not implemented — Phase 4")
+@router.post("/verify-email/{token}", status_code=status.HTTP_200_OK)
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+    ok = await password_reset_service.consume_verification_token(token, db)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid, expired, or already-used verification token",
+        )
+    return {"message": "Email verified successfully"}
 
 
-@router.post("/forgot-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def forgot_password():
-    raise HTTPException(status_code=501, detail="Not implemented — Phase 4")
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await password_reset_service.request_password_reset(data.email, db)
+    return {"message": "If that address is registered you will receive a reset email shortly"}
 
 
-@router.post("/reset-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def reset_password():
-    raise HTTPException(status_code=501, detail="Not implemented — Phase 4")
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    ok = await password_reset_service.consume_reset_token(data.token, data.new_password, db)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid, expired, or already-used reset token",
+        )
+    return {"message": "Password updated successfully"}
