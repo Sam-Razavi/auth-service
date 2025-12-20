@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models.role import Role
+from app.models.role import Role  # noqa: F401 — ensures table is registered in metadata
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -50,6 +50,22 @@ def mock_redis():
 
     with patch("app.utils.redis.get_redis", side_effect=fake_get_redis):
         yield redis_mock
+
+
+@pytest.fixture(autouse=True)
+def mock_email_service():
+    """Prevent any real SMTP calls in tests; yield mocks so tests can inspect calls."""
+    with (
+        patch(
+            "app.services.email_service.send_password_reset_email",
+            new_callable=AsyncMock,
+        ) as mock_reset,
+        patch(
+            "app.services.email_service.send_verification_email",
+            new_callable=AsyncMock,
+        ) as mock_verify,
+    ):
+        yield {"reset": mock_reset, "verify": mock_verify}
 
 
 @pytest_asyncio.fixture

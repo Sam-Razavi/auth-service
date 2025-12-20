@@ -90,6 +90,10 @@ async def _fetch_valid_token(
         return None
     if record.used_at is not None:
         return None
-    if record.expires_at < datetime.now(tz=timezone.utc):
+    # SQLite stores datetimes without timezone; normalise to UTC-aware before comparing
+    expires = record.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(tz=timezone.utc):
         return None
     return record
