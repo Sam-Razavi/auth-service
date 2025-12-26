@@ -10,7 +10,7 @@ Other apps delegate all auth to this service — they never handle passwords or 
 | 1 — Core JWT | **Done** | Register, login, refresh, logout, /me |
 | 2 — OAuth2 | **Done** | GitHub + Google login, account linking |
 | 3 — RBAC | **Done** | Roles, admin endpoints, role assignment |
-| 4 — Password reset | Planned | Email-based forgot/reset flow |
+| 4 — Password reset | **Done** | Email verification, forgot/reset password flow |
 | 5 — Polish | Planned | Rate limiting, logging, CI, GHCR image |
 
 **Phase 1 features:**
@@ -33,6 +33,13 @@ Other apps delegate all auth to this service — they never handle passwords or 
 - Admin-only endpoints: list users, get user, assign roles, deactivate user
 - Default roles seeded via Alembic migration (no manual SQL needed)
 - Soft-delete deactivation — deactivated users cannot log in
+
+**Phase 4 features:**
+- Email verification sent automatically on registration; `POST /auth/verify-email/{token}` marks the user as verified
+- `POST /auth/forgot-password` — sends a one-hour reset link; always returns 200 to prevent email enumeration
+- `POST /auth/reset-password` — validates single-use token, updates the password, and revokes all active sessions
+- Tokens stored as SHA-256 hashes with expiry and `used_at` tracking (single-use enforcement)
+- SMTP via stdlib `smtplib` with STARTTLS; falls back to console logging when `SMTP_HOST` is unset (development mode)
 
 ---
 
@@ -89,6 +96,12 @@ No running database or Redis needed — tests use in-memory SQLite and a mocked 
 | `GOOGLE_CLIENT_SECRET` | Phase 2 | — | Google Cloud OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | Phase 2 | `…/oauth/google/callback` | Must match Google Cloud Console |
 | `ENVIRONMENT` | No | `development` | Set to `production` to silence SQL echo |
+| `SMTP_HOST` | Phase 4 | `""` | SMTP server hostname; leave empty to log emails to stdout |
+| `SMTP_PORT` | Phase 4 | `587` | SMTP port (STARTTLS) |
+| `SMTP_USER` | Phase 4 | `""` | SMTP username |
+| `SMTP_PASSWORD` | Phase 4 | `""` | SMTP password |
+| `FROM_EMAIL` | Phase 4 | `noreply@yourdomain.com` | Sender address for outbound emails |
+| `APP_URL` | Phase 4 | `http://localhost:8001` | Base URL used in email links |
 
 ---
 
@@ -120,6 +133,16 @@ GET /health
 | `GET` | `/oauth/github/callback?code=…&state=…` | `200 TokenPair` |
 | `GET` | `/oauth/google` | `307` redirect to Google |
 | `GET` | `/oauth/google/callback?code=…&state=…` | `200 TokenPair` |
+
+### Password reset and email verification endpoints
+
+| Method | Path | Body | Returns |
+|--------|------|------|---------|
+| `POST` | `/auth/forgot-password` | `{"email": "…"}` | `200` always |
+| `POST` | `/auth/reset-password` | `{"token": "…", "new_password": "…"}` | `200` or `400` |
+| `POST` | `/auth/verify-email/{token}` | — | `200` or `400` |
+
+`new_password` must be at least 8 characters. A successful reset revokes all existing refresh tokens, forcing re-login on all devices.
 
 ### Admin endpoints
 
@@ -253,4 +276,7 @@ Store the new token pair, discard the old refresh token (it's immediately revoke
 - Refresh tokens are stored as SHA-256 hashes only; the raw token leaves the service exactly once
 - Access token JTIs are blacklisted in Redis on `logout-all` for the token's remaining lifetime
 - OAuth state tokens are single-use and expire after 10 minutes; reuse or forgery returns 400
+- Password reset and verification tokens are SHA-256 hashed, expire after 1 hour / 24 hours respectively, and can only be used once (`used_at` tracking)
+- `forgot-password` always returns 200 regardless of whether the email exists (prevents enumeration)
+- Successful password reset immediately revokes all refresh tokens across all devices
 - All secrets are loaded from environment variables; nothing is hardcoded
