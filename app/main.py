@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.routers import auth, oauth, admin
 
 settings = get_settings()
@@ -14,6 +15,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

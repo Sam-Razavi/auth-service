@@ -43,7 +43,9 @@ def mock_redis():
     redis_mock = AsyncMock()
     redis_mock.set = AsyncMock()
     redis_mock.exists = AsyncMock(return_value=0)
-    redis_mock.delete = AsyncMock(return_value=1)  # default: OAuth state is valid
+    redis_mock.delete = AsyncMock(return_value=1)   # default: OAuth state is valid
+    redis_mock.incr = AsyncMock(return_value=1)     # first request — never triggers rate limit
+    redis_mock.expire = AsyncMock(return_value=True)
 
     async def fake_get_redis():
         return redis_mock
