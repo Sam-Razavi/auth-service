@@ -1,18 +1,18 @@
 import asyncio
-import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from app.config import get_settings
+from app.utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 async def _send_email(to: str, subject: str, body: str) -> None:
     settings = get_settings()
     if not settings.SMTP_HOST:
-        logger.info("[EMAIL DEV] To: %s | Subject: %s\n%s", to, subject, body)
+        log.info("email_skipped", to=to, subject=subject)
         return
 
     msg = MIMEMultipart("alternative")
