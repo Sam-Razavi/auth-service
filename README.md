@@ -1,5 +1,7 @@
 # Auth Service
 
+![Tests](https://github.com/sam-razavi/auth-service/actions/workflows/test.yml/badge.svg)
+
 Standalone authentication microservice for ApplyLuma, Rostid, and future projects.
 Other apps delegate all auth to this service — they never handle passwords or tokens themselves.
 
@@ -11,7 +13,7 @@ Other apps delegate all auth to this service — they never handle passwords or 
 | 2 — OAuth2 | **Done** | GitHub + Google login, account linking |
 | 3 — RBAC | **Done** | Roles, admin endpoints, role assignment |
 | 4 — Password reset | **Done** | Email verification, forgot/reset password flow |
-| 5 — Polish | Planned | Rate limiting, logging, CI, GHCR image |
+| 5 — Polish | **Done** | Rate limiting, structured logging, CI, GHCR image |
 
 **Phase 1 features:**
 - JWT access tokens (HS256, 15-minute lifetime)
@@ -33,6 +35,12 @@ Other apps delegate all auth to this service — they never handle passwords or 
 - Admin-only endpoints: list users, get user, assign roles, deactivate user
 - Default roles seeded via Alembic migration (no manual SQL needed)
 - Soft-delete deactivation — deactivated users cannot log in
+
+**Phase 5 features:**
+- Per-IP rate limiting via `RateLimitMiddleware` backed by Redis: login 10/min, register 5/min, forgot-password 3/5min — returns 429
+- Structured JSON logging with `structlog` — JSON in production, colored in development; all requests logged with method, path, status, and duration
+- GitHub Actions CI — runs `pytest` on every push to `main` or a feature branch and on PRs
+- Docker image built and pushed to GHCR (`ghcr.io/sam-razavi/auth-service`) on every push to `main` and on `v*` tags with automatic semver tagging
 
 **Phase 4 features:**
 - Email verification sent automatically on registration; `POST /auth/verify-email/{token}` marks the user as verified
@@ -102,6 +110,7 @@ No running database or Redis needed — tests use in-memory SQLite and a mocked 
 | `SMTP_PASSWORD` | Phase 4 | `""` | SMTP password |
 | `FROM_EMAIL` | Phase 4 | `noreply@yourdomain.com` | Sender address for outbound emails |
 | `APP_URL` | Phase 4 | `http://localhost:8001` | Base URL used in email links |
+| `RATE_LIMIT_STORAGE_URL` | Phase 5 | `memory://` | Rate limit backend; set to `redis://…` in production |
 
 ---
 
@@ -267,6 +276,22 @@ Store the new token pair, discard the old refresh token (it's immediately revoke
 
 **Never send the refresh token to your app's own backend.** Keep it in the browser
 (httpOnly cookie recommended) and send it only to this service.
+
+---
+
+## Rate limits
+
+The following endpoints are rate-limited per client IP:
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /auth/login` | 10 requests / minute |
+| `POST /auth/register` | 5 requests / minute |
+| `POST /auth/forgot-password` | 3 requests / 5 minutes |
+
+All other endpoints are unlimited. Breaching a limit returns `429 Too Many Requests`.
+
+In development (`RATE_LIMIT_STORAGE_URL=memory://`) counters are local to the process and reset on restart. In production, point this at Redis so limits are enforced consistently across multiple replicas.
 
 ---
 
