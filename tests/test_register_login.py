@@ -4,7 +4,11 @@ import pytest
 async def test_health(client):
     resp = await client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok", "version": "1.0.0"}
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["version"] == "1.0.0"
+    assert body["checks"]["database"] == "ok"
+    assert body["checks"]["redis"] == "ok"
 
 
 async def test_register_success(client):
