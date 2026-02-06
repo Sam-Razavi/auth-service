@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.auth import ForgotPasswordRequest, LoginRequest, ResetPasswordRequest
+from app.schemas.auth import ForgotPasswordRequest, LoginRequest, ResendVerificationRequest, ResetPasswordRequest
 from app.schemas.token import LogoutRequest, RefreshRequest, TokenPair
 from app.schemas.user import UserCreate, UserResponse
 from app.services import password_reset_service
@@ -94,6 +94,12 @@ async def logout_all(
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/verify-email/resend", status_code=status.HTTP_200_OK)
+async def resend_verification_email(data: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
+    await password_reset_service.resend_verification_token(data.email, db)
+    return {"message": "If that address has an unverified account you will receive a new verification email"}
 
 
 @router.post("/verify-email/{token}", status_code=status.HTTP_200_OK)

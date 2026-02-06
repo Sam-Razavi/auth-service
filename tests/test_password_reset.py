@@ -220,3 +220,32 @@ async def test_verify_email_expired_token(client, db, mock_email_service):
 
     resp = await client.post(f"/auth/verify-email/{raw_token}")
     assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/verify-email/resend
+# ---------------------------------------------------------------------------
+
+async def test_resend_verification_unknown_email_returns_200(client):
+    resp = await client.post("/auth/verify-email/resend", json={"email": "ghost@example.com"})
+    assert resp.status_code == 200
+
+
+async def test_resend_verification_sends_new_email(client, mock_email_service):
+    await _register(client, "resend@example.com")
+    mock_email_service["verify"].reset_mock()
+
+    resp = await client.post("/auth/verify-email/resend", json={"email": "resend@example.com"})
+    assert resp.status_code == 200
+    assert mock_email_service["verify"].call_count == 1
+
+
+async def test_resend_already_verified_no_email(client, mock_email_service):
+    await _register(client, "alreadyverified@example.com")
+    raw_token = mock_email_service["verify"].call_args.args[1]
+    await client.post(f"/auth/verify-email/{raw_token}")
+
+    mock_email_service["verify"].reset_mock()
+    resp = await client.post("/auth/verify-email/resend", json={"email": "alreadyverified@example.com"})
+    assert resp.status_code == 200
+    mock_email_service["verify"].assert_not_called()
