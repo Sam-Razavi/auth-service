@@ -1,4 +1,4 @@
-import pytest
+from unittest.mock import AsyncMock
 
 
 async def test_health(client):
@@ -73,3 +73,18 @@ async def test_me_without_token(client):
 async def test_me_with_invalid_token(client):
     resp = await client.get("/auth/me", headers={"Authorization": "Bearer totally.invalid.token"})
     assert resp.status_code == 401
+
+
+async def test_account_locked_after_max_attempts(client, mock_redis):
+    await client.post("/auth/register", json={"email": "lockme@example.com", "password": "pass1234"})
+    # Simulate counter already at max
+    mock_redis.incr = AsyncMock(return_value=6)  # over _MAX_ATTEMPTS=5
+    resp = await client.post("/auth/login", json={"email": "lockme@example.com", "password": "pass1234"})
+    assert resp.status_code == 401
+
+
+async def test_successful_login_within_attempts_succeeds(client, mock_redis):
+    await client.post("/auth/register", json={"email": "ok@example.com", "password": "pass1234"})
+    mock_redis.incr = AsyncMock(return_value=3)  # within limit
+    resp = await client.post("/auth/login", json={"email": "ok@example.com", "password": "pass1234"})
+    assert resp.status_code == 200
