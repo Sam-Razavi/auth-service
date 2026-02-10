@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.auth import ForgotPasswordRequest, LoginRequest, ResendVerificationRequest, ResetPasswordRequest
+from app.schemas.auth import ForgotPasswordRequest, LoginRequest, ResendVerificationRequest, ResetPasswordRequest, SetPasswordRequest
 from app.schemas.token import LogoutRequest, RefreshRequest, TokenPair
 from app.schemas.user import UserCreate, UserResponse
 from app.services import password_reset_service
@@ -117,6 +117,23 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     await password_reset_service.request_password_reset(data.email, db)
     return {"message": "If that address is registered you will receive a reset email shortly"}
+
+
+@router.post("/set-password", status_code=status.HTTP_200_OK)
+async def set_password(
+    data: SetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.hashed_password is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Account already has a password. Use reset-password to change it.",
+        )
+    from app.utils.security import hash_password
+    current_user.hashed_password = hash_password(data.new_password)
+    await db.commit()
+    return {"message": "Password set successfully"}
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
