@@ -8,10 +8,9 @@ from app.config import get_settings
 from app.models.token import RefreshToken
 from app.utils.security import create_access_token, generate_raw_token, generate_token_hash
 
-settings = get_settings()
-
 
 async def create_token_pair(user_id: uuid.UUID, db: AsyncSession) -> dict:
+    settings = get_settings()
     raw_refresh = generate_raw_token()
     jti = str(uuid.uuid4())
     expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
