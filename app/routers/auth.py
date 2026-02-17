@@ -96,6 +96,12 @@ async def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/validate", response_model=UserResponse)
+async def validate_token(current_user: User = Depends(get_current_user)):
+    """Service-to-service token introspection — returns user info if the token is valid."""
+    return current_user
+
+
 @router.post("/verify-email/resend", status_code=status.HTTP_200_OK)
 async def resend_verification_email(data: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
     await password_reset_service.resend_verification_token(data.email, db)
