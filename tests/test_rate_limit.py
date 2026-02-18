@@ -19,6 +19,7 @@ async def test_login_rate_limited_when_counter_exceeded(client, mock_redis):
     resp = await client.post("/auth/login", json={"email": "x@example.com", "password": "pass"})
     assert resp.status_code == 429
     assert "Too many requests" in resp.json()["detail"]
+    assert resp.headers["Retry-After"] == "60"
 
 
 async def test_register_rate_limited_when_counter_exceeded(client, mock_redis):
