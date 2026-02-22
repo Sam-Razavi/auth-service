@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+log = structlog.get_logger()
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
@@ -61,7 +64,9 @@ async def refresh(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(data: LogoutRequest, db: AsyncSession = Depends(get_db)):
-    await revoke_token(data.refresh_token, db)
+    revoked = await revoke_token(data.refresh_token, db)
+    if revoked:
+        log.info("audit.logout")
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
@@ -89,6 +94,7 @@ async def logout_all(
         await blacklist_token(jti, remaining)
 
     await revoke_all_tokens(uuid.UUID(user_id), db)
+    log.info("audit.logout_all", user_id=user_id)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -116,6 +122,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid, expired, or already-used verification token",
         )
+    log.info("audit.email_verified")
     return {"message": "Email verified successfully"}
 
 
@@ -150,4 +157,5 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid, expired, or already-used reset token",
         )
+    log.info("audit.password_reset")
     return {"message": "Password updated successfully"}
