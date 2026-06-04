@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     APP_URL: str = "http://localhost:8001"
     ENVIRONMENT: str = "development"
+    ALLOWED_ORIGINS: list[str] = ["*"]
 
     model_config = {"env_file": ".env", "case_sensitive": True}
 
