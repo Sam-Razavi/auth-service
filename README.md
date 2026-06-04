@@ -14,6 +14,7 @@ Other apps delegate all auth to this service — they never handle passwords or 
 | 3 — RBAC | **Done** | Roles, admin endpoints, role assignment |
 | 4 — Password reset | **Done** | Email verification, forgot/reset password flow |
 | 5 — Polish | **Done** | Rate limiting, structured logging, CI, GHCR image |
+| 6 — Hardening | **Done** | CORS config, deep health check, account lockout, security headers, token validation endpoint, Retry-After header, X-Request-ID tracing, coverage CI gate, Docker healthcheck, audit logging, standardized error responses |
 
 **Phase 1 features:**
 - JWT access tokens (HS256, 15-minute lifetime)
@@ -41,6 +42,22 @@ Other apps delegate all auth to this service — they never handle passwords or 
 - Structured JSON logging with `structlog` — JSON in production, colored in development; all requests logged with method, path, status, and duration
 - GitHub Actions CI — runs `pytest` on every push to `main` or a feature branch and on PRs
 - Docker image built and pushed to GHCR (`ghcr.io/sam-razavi/auth-service`) on every push to `main` and on `v*` tags with automatic semver tagging
+
+**Phase 6 features:**
+- Configurable CORS origins via `ALLOWED_ORIGINS` env var
+- Deep `/health` endpoint checks database and Redis connectivity, returns 503 when either is unhealthy
+- `POST /auth/verify-email/resend` — resend a verification email to an unverified address
+- Account lockout — 5 failed login attempts triggers a 15-minute lockout per email address (backed by Redis)
+- `POST /auth/set-password` — allows OAuth-only users to add a local password
+- Security headers middleware — `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`
+- `GET /auth/validate` — service-to-service token introspection endpoint returning the user object
+- `Retry-After` response header on 429 rate-limit responses
+- `X-Request-ID` middleware — echoes or generates a UUID per request for distributed tracing; bound to structlog context
+- CI coverage gate — `pytest-cov` enforces minimum 70% line coverage in CI
+- Docker healthcheck for the `app` service via `/health` endpoint
+- Structured audit log events (`audit.register`, `audit.login`, `audit.login_failed`, `audit.login_locked`, `audit.logout`, `audit.logout_all`, `audit.email_verified`, `audit.password_reset`)
+- Global exception handlers — validation errors return a flat 422 body; uncaught exceptions return 500 without leaking tracebacks
+- Password complexity enforced everywhere: minimum 8 characters, at least one letter and one digit or special character
 
 **Phase 4 features:**
 - Email verification sent automatically on registration; `POST /auth/verify-email/{token}` marks the user as verified
@@ -150,8 +167,11 @@ GET /health
 | `POST` | `/auth/forgot-password` | `{"email": "…"}` | `200` always |
 | `POST` | `/auth/reset-password` | `{"token": "…", "new_password": "…"}` | `200` or `400` |
 | `POST` | `/auth/verify-email/{token}` | — | `200` or `400` |
+| `POST` | `/auth/verify-email/resend` | `{"email": "…"}` | `200` always |
+| `POST` | `/auth/set-password` | `{"new_password": "…"}` | `200` or `409` |
+| `GET`  | `/auth/validate` | — | `200 UserResponse` or `401` |
 
-`new_password` must be at least 8 characters. A successful reset revokes all existing refresh tokens, forcing re-login on all devices.
+`new_password` must be at least 8 characters, with at least one letter and one digit or special character. A successful reset revokes all existing refresh tokens, forcing re-login on all devices.
 
 ### Admin endpoints
 
@@ -289,9 +309,15 @@ The following endpoints are rate-limited per client IP:
 | `POST /auth/register` | 5 requests / minute |
 | `POST /auth/forgot-password` | 3 requests / 5 minutes |
 
-All other endpoints are unlimited. Breaching a limit returns `429 Too Many Requests`.
+All other endpoints are unlimited. Breaching a limit returns `429 Too Many Requests` with a `Retry-After` header indicating how many seconds to wait.
 
 In development (`RATE_LIMIT_STORAGE_URL=memory://`) counters are local to the process and reset on restart. In production, point this at Redis so limits are enforced consistently across multiple replicas.
+
+---
+
+## Request tracing
+
+Every response includes an `X-Request-ID` header. If the caller sends `X-Request-ID: <uuid>` in the request, the same value is echoed back — useful for correlating client-side and server-side logs in distributed systems.
 
 ---
 
@@ -305,3 +331,7 @@ In development (`RATE_LIMIT_STORAGE_URL=memory://`) counters are local to the pr
 - `forgot-password` always returns 200 regardless of whether the email exists (prevents enumeration)
 - Successful password reset immediately revokes all refresh tokens across all devices
 - All secrets are loaded from environment variables; nothing is hardcoded
+- Account lockout: 5 consecutive failed login attempts locks the account for 15 minutes (counter stored in Redis)
+- Security response headers set on every response: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`
+- Unhandled server errors return `{"detail": "Internal server error"}` — stack traces are never exposed to clients
+- Key auth events (register, login, logout, password reset, email verification) are emitted as structured `audit.*` log entries for security monitoring
