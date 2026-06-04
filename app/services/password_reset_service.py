@@ -60,6 +60,14 @@ async def send_verification_token(user_id: uuid.UUID, email: str, db: AsyncSessi
     await email_service.send_verification_email(email, raw_token)
 
 
+async def resend_verification_token(email: str, db: AsyncSession) -> None:
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active or user.is_verified:
+        return  # silently no-op: don't leak info or resend unnecessarily
+    await send_verification_token(user.id, user.email, db)
+
+
 async def consume_verification_token(raw_token: str, db: AsyncSession) -> bool:
     record = await _fetch_valid_token(raw_token, "email_verification", db)
     if record is None:
