@@ -31,6 +31,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Too many requests. Please try again later."},
+                headers={"Retry-After": str(window_seconds)},
             )
 
         return await call_next(request)
