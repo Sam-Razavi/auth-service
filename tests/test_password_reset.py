@@ -74,7 +74,7 @@ async def test_reset_password_success(client, mock_email_service):
 
     resp = await client.post(
         "/auth/reset-password",
-        json={"token": raw_token, "new_password": "brand_new_pass"},
+        json={"token": raw_token, "new_password": "brand_new_pass1"},
     )
     assert resp.status_code == 200
 
@@ -84,7 +84,7 @@ async def test_reset_password_success(client, mock_email_service):
     assert bad.status_code == 401
 
     good = await client.post(
-        "/auth/login", json={"email": "resetok@example.com", "password": "brand_new_pass"}
+        "/auth/login", json={"email": "resetok@example.com", "password": "brand_new_pass1"}
     )
     assert good.status_code == 200
 
@@ -92,7 +92,7 @@ async def test_reset_password_success(client, mock_email_service):
 async def test_reset_password_invalid_token(client):
     resp = await client.post(
         "/auth/reset-password",
-        json={"token": "completely_made_up_token", "new_password": "newpass123"},
+        json={"token": "completely_made_up_token", "new_password": "newpass123!"},
     )
     assert resp.status_code == 400
 
@@ -105,10 +105,10 @@ async def test_reset_password_used_token(client, mock_email_service):
     raw_token = mock_email_service["reset"].call_args.args[1]
 
     await client.post(
-        "/auth/reset-password", json={"token": raw_token, "new_password": "first_new_pass"}
+        "/auth/reset-password", json={"token": raw_token, "new_password": "first_new_pass1"}
     )
     resp = await client.post(
-        "/auth/reset-password", json={"token": raw_token, "new_password": "second_new_pass"}
+        "/auth/reset-password", json={"token": raw_token, "new_password": "second_new_pass1"}
     )
     assert resp.status_code == 400
 
@@ -129,7 +129,7 @@ async def test_reset_password_expired_token(client, db, mock_email_service):
 
     resp = await client.post(
         "/auth/reset-password",
-        json={"token": raw_token, "new_password": "newpass123"},
+        json={"token": raw_token, "new_password": "newpass123!"},
     )
     assert resp.status_code == 400
 
@@ -144,7 +144,7 @@ async def test_reset_password_revokes_existing_sessions(client, mock_email_servi
 
     await client.post(
         "/auth/reset-password",
-        json={"token": raw_token, "new_password": "newpass999"},
+        json={"token": raw_token, "new_password": "newpass999!"},
     )
 
     refresh_resp = await client.post("/auth/refresh", json={"refresh_token": refresh_token})

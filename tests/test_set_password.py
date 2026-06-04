@@ -25,14 +25,14 @@ async def test_set_password_for_oauth_user(client, mock_redis):
 
     resp = await client.post(
         "/auth/set-password",
-        json={"new_password": "myNewPass1"},
+        json={"new_password": "myNewPass1!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
 
     # Can now log in with the password
     login = await client.post(
-        "/auth/login", json={"email": "oauth@example.com", "password": "myNewPass1"}
+        "/auth/login", json={"email": "oauth@example.com", "password": "myNewPass1!"}
     )
     assert login.status_code == 200
 
@@ -44,7 +44,7 @@ async def test_set_password_rejected_for_existing_password_user(client):
 
     resp = await client.post(
         "/auth/set-password",
-        json={"new_password": "anotherpass"},
+        json={"new_password": "anotherpass1"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 409
