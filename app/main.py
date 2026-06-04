@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.routers import auth, oauth, admin
 from app.utils.logging import configure_logging, get_logger
 import app.utils.redis as _redis_utils
@@ -25,6 +26,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
