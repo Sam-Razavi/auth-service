@@ -1,6 +1,6 @@
 # Auth Service
 
-[![Tests](https://github.com/Sam-Razavi/auth-service/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Sam-Razavi/auth-service/actions/workflows/test.yml)
+[![Tests](https://github.com/Sam-Razavi/auth-service/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Sam-Razavi/auth-service/actions/workflows/ci.yml)
 [![Docker](https://github.com/Sam-Razavi/auth-service/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/Sam-Razavi/auth-service/actions/workflows/docker.yml)
 [![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
