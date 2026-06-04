@@ -1,7 +1,14 @@
 # Auth Service
 
-![Tests](https://github.com/Sam-Razavi/auth-service/actions/workflows/test.yml/badge.svg)
-![Docker](https://github.com/Sam-Razavi/auth-service/actions/workflows/docker.yml/badge.svg)
+[![Tests](https://github.com/Sam-Razavi/auth-service/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Sam-Razavi/auth-service/actions/workflows/test.yml)
+[![Docker](https://github.com/Sam-Razavi/auth-service/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/Sam-Razavi/auth-service/actions/workflows/docker.yml)
+[![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Coverage](https://img.shields.io/badge/coverage-73%25-yellowgreen)](https://github.com/Sam-Razavi/auth-service/actions/workflows/test.yml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/Sam-Razavi/auth-service)](https://github.com/Sam-Razavi/auth-service/commits/main)
+[![Issues](https://img.shields.io/github/issues/Sam-Razavi/auth-service)](https://github.com/Sam-Razavi/auth-service/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Sam-Razavi/auth-service/pulls)
 
 Standalone authentication microservice for **ApplyLuma**, **Rostid**, and any future service that needs auth.
 
