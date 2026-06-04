@@ -72,7 +72,6 @@ async def revoke_all_tokens(user_id: uuid.UUID, db: AsyncSession) -> int:
         update(RefreshToken)
         .where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
         .values(revoked=True)
-        .returning(RefreshToken.id)
     )
     await db.commit()
-    return len(result.fetchall())
+    return result.rowcount
