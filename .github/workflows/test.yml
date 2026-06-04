@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -16,7 +16,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -28,3 +27,4 @@ jobs:
           DATABASE_URL: sqlite+aiosqlite:///:memory:
           REDIS_URL: redis://localhost:6379
           ENVIRONMENT: test
+          ALLOWED_ORIGINS: '["*"]'
