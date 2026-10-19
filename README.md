@@ -14,6 +14,36 @@ Standalone authentication microservice for **ApplyLuma**, **Rostid**, and any fu
 
 Apps that use this service delegate all authentication and session management here — they never handle passwords, tokens, or OAuth flows themselves. Any protected route just calls `GET /auth/validate` with the Bearer token and gets the user object back.
 
+![Sign-in page](docs/screenshots/login.png)
+
+---
+
+## Web UI
+
+The service ships with a small, dependency-free frontend (plain HTML, CSS and JavaScript in [`frontend/`](frontend/)) served at **http://localhost:8001/ui/**. `/` redirects there, and `/reset-password?token=…` (the link in password-reset emails) opens the reset form with the token filled in.
+
+| Page | What it does |
+|------|--------------|
+| **Sign in / Create account** | Email + password, live password-strength checks that mirror the server rules, GitHub and Google buttons |
+| **Dashboard** | Profile, verification status and roles; live access-token countdown with silent refresh; rotate tokens; sign out everywhere; set a password for OAuth-only accounts; service health |
+| **Admin** | Visible to `admin` users only: user stats, search, click-to-toggle roles, deactivate accounts |
+| **Forgot / reset password, verify email** | Front-ends for the matching `/auth/*` endpoints |
+
+Tokens are kept in `localStorage`, and an expired access token is refreshed automatically through `/auth/refresh`. To host the UI somewhere else, set `window.AUTH_API_BASE = "https://auth.example.com"` before `app.js` loads and add that origin to `ALLOWED_ORIGINS`.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard" /><p align="center"><b>Dashboard</b></p></td>
+    <td width="50%"><img src="docs/screenshots/admin.png" alt="Admin user management" /><p align="center"><b>Admin · user management</b></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/register.png" alt="Create account" /><p align="center"><b>Create account</b></p></td>
+    <td width="50%"><img src="docs/screenshots/forgot-password.png" alt="Forgot password" /><p align="center"><b>Forgot password</b></p></td>
+  </tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/mobile-login.png" alt="Mobile sign-in" width="280" /><br/><b>Mobile</b></p>
+
 ---
 
 ## Features
@@ -77,6 +107,7 @@ docker-compose up --build
 ```
 
 The service starts on **http://localhost:8001**.  
+Web UI: **http://localhost:8001/ui/**  
 Interactive API docs: **http://localhost:8001/docs**
 
 ### Run locally (without Docker)
@@ -354,6 +385,8 @@ app/
     ├── redis.py             # Redis client singleton, blacklist helpers
     └── logging.py           # structlog configuration
 
+frontend/                    # Static web UI served at /ui (index.html, styles.css, app.js)
+docs/screenshots/            # UI screenshots used in this README
 alembic/versions/            # Database migrations
 tests/                       # pytest suite (in-memory SQLite + mock Redis)
 ```

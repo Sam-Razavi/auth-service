@@ -1,9 +1,12 @@
 import time
+from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +45,19 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(oauth.router)
 app.include_router(admin.router)
+
+_FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+if _FRONTEND_DIR.is_dir():
+    app.mount("/ui", StaticFiles(directory=_FRONTEND_DIR, html=True), name="ui")
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse("/ui/")
+
+    @app.get("/reset-password", include_in_schema=False)
+    async def reset_password_page(token: str = ""):
+        # Password-reset emails link here; hand the token to the frontend.
+        return RedirectResponse(f"/ui/#/reset-password?token={quote(token)}")
 
 
 @app.exception_handler(RequestValidationError)
