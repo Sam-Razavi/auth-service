@@ -6,6 +6,8 @@ Create Date: 2025-11-09 10:00:00
 """
 from typing import Sequence, Union
 
+import uuid
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -16,14 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 _roles_table = sa.table(
     "roles",
-    sa.column("id", sa.String),
+    sa.column("id", sa.Uuid(as_uuid=True)),
     sa.column("name", sa.String),
 )
 
 _DEFAULT_ROLES = [
-    {"id": "10000000-0000-0000-0000-000000000001", "name": "admin"},
-    {"id": "10000000-0000-0000-0000-000000000002", "name": "user"},
-    {"id": "10000000-0000-0000-0000-000000000003", "name": "moderator"},
+    {"id": uuid.UUID("10000000-0000-0000-0000-000000000001"), "name": "admin"},
+    {"id": uuid.UUID("10000000-0000-0000-0000-000000000002"), "name": "user"},
+    {"id": uuid.UUID("10000000-0000-0000-0000-000000000003"), "name": "moderator"},
 ]
 
 
