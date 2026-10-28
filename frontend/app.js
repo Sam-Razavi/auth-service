@@ -231,11 +231,35 @@
     $("#nav-logout")?.addEventListener("click", logout);
   }
 
+  // ---------- Demo account ----------
+  // When the service has a public demo account (GET /auth/demo), the sign-in page offers
+  // it as a one-click sign-in, and #/login?demo signs straight in (links from a portfolio).
+  // Signed-in visitors never reach the sign-in page, so such a link can't replace a session.
+  function mountDemo(box, params) {
+    request("/auth/demo")
+      .then((demo) => {
+        box.innerHTML = `
+          <button class="btn btn-ghost demo-btn" type="button" data-busy="Signing in…">${I.zap}Try the demo account</button>
+          <p class="form-foot">Signs in as <b>${esc(demo.email)}</b>, a regular user. Its password is public.</p>`;
+        box.hidden = false;
+        const btn = $("button", box);
+        const signIn = () =>
+          withBusy(btn, async () => {
+            tokens.set(await request("/auth/login", { method: "POST", body: { email: demo.email, password: demo.password } }));
+            toast("Signed in to the demo account", "ok");
+            go("dashboard");
+          }).catch((err) => toast(err.message, "err"));
+        btn.addEventListener("click", signIn);
+        if (params?.has("demo")) signIn();
+      })
+      .catch(() => {}); // no demo account on this server: nothing to show
+  }
+
   // ---------- Views ----------
   const state = { user: null, timer: null };
 
   const views = {
-    login() {
+    login(params) {
       return {
         html: `
         <div class="center"><div class="split fade-in">
@@ -248,6 +272,7 @@
               ${field({ name: "password", label: "Password", type: "password", placeholder: "••••••••", lead: I.lock, autocomplete: "current-password", extra: '<a href="#/forgot-password">Forgot?</a>' })}
               <button class="btn btn-primary" type="submit" data-busy="Signing in…">Sign in</button>
             </form>
+            <div id="demo" hidden></div>
             ${oauthButtons()}
             <p class="form-foot">New here? <a href="#/register">Create an account</a></p>
           </div>
@@ -258,6 +283,7 @@
             toast("Signed in successfully", "ok");
             go("dashboard");
           });
+          mountDemo($("#demo", root), params);
         },
       };
     },

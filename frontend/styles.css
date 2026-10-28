@@ -158,6 +158,9 @@ button, input { font: inherit; color: inherit; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .oauth { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .oauth .btn { width: 100%; }
+#demo { margin-top: 12px; }
+#demo .demo-btn { width: 100%; }
+#demo .form-foot { margin-top: 10px; font-size: 13px; }
 .form-foot { margin-top: 22px; text-align: center; font-size: 14px; color: var(--muted); }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 

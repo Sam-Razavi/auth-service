@@ -17,6 +17,7 @@ from app.schemas.token import LogoutRequest, RefreshRequest, TokenPair
 from app.schemas.user import UserCreate, UserResponse
 from app.services import password_reset_service
 from app.services.auth_service import authenticate_user, register_user
+from app.services.demo_service import demo_credentials
 from app.services.token_service import (
     create_token_pair,
     revoke_all_tokens,
@@ -95,6 +96,17 @@ async def logout_all(
 
     await revoke_all_tokens(uuid.UUID(user_id), db)
     log.info("audit.logout_all", user_id=user_id)
+
+
+@router.get("/demo")
+async def demo_account():
+    """The public demo account's credentials (published on purpose), or 404 when the
+    service runs without one. The web UI uses it for its one-click demo sign-in."""
+    creds = demo_credentials()
+    if creds is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No demo account")
+    email, password = creds
+    return {"email": email, "password": password}
 
 
 @router.get("/me", response_model=UserResponse)

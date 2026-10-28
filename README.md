@@ -46,12 +46,27 @@ Tokens are kept in `localStorage`, and an expired access token is refreshed auto
 
 ---
 
+## Demo account
+
+Set `DEMO_ACCOUNT_EMAIL` and `DEMO_ACCOUNT_PASSWORD` to give visitors a public account to try. On
+every start the service creates it, or puts it back if it was changed: active, verified, that
+password, and the `user` role only, so a visitor can never reach the admin endpoints. The sign-in
+page then shows **Try the demo account** (one click), and `/ui/#/login?demo` signs straight in, for
+links from a portfolio. Someone who is already signed in is sent to their dashboard instead, so such
+a link can't replace a real session.
+
+Its password is public, so the demo account is exempt from the failed-login lockout (otherwise one
+visitor could lock everyone else out); the per-IP rate limit still applies. "Sign out everywhere" on
+it signs out other visitors' demo sessions too.
+
+---
+
 ## Features
 
 ### Identity & Sessions
 - **JWT access tokens** (HS256, 15-minute lifetime)
 - **Refresh token rotation** — the moment a new pair is issued the old refresh token is revoked; replayed tokens are rejected
-- **Redis blacklist** — `logout-all` immediately invalidates the access token for all devices without waiting for expiry
+- **Sign out everywhere** — `logout-all` revokes every refresh token and blacklists the current access token in Redis; access tokens already issued to other devices stop working when they expire (at most 15 minutes)
 - **Account lockout** — 5 consecutive failed login attempts locks the account for 15 minutes (Redis counter, auto-expires)
 
 ### OAuth2
@@ -155,6 +170,7 @@ GET /health
 | `POST` | `/auth/logout-all` | Bearer | — | `204` |
 | `GET`  | `/auth/me` | Bearer | — | `200 UserResponse` |
 | `GET`  | `/auth/validate` | Bearer | — | `200 UserResponse` |
+| `GET`  | `/auth/demo` | — | — | `200 {email, password}` of the public demo account, or `404` |
 
 `/auth/validate` is the service-to-service introspection endpoint. Downstream apps call it to confirm a token is valid and get the user object (including roles) in one request.
 
@@ -239,6 +255,8 @@ Role assignment fully replaces the current set. Pass `{"roles": []}` to remove a
 | `SMTP_PASSWORD` | Email | `""` | SMTP password |
 | `FROM_EMAIL` | Email | `noreply@yourdomain.com` | Sender address |
 | `APP_URL` | Email | `http://localhost:8001` | Base URL used in email links |
+| `DEMO_ACCOUNT_EMAIL` | Demo | `""` | Public demo account (see below); use an address that can't receive mail, e.g. `demo@example.com` |
+| `DEMO_ACCOUNT_PASSWORD` | Demo | `""` | Its password, which is shown publicly. Both must be set to enable the demo |
 
 ---
 

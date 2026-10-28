@@ -1,4 +1,5 @@
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
 
@@ -11,11 +12,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db
+from app.database import AsyncSessionLocal, get_db
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.routers import auth, oauth, admin
+from app.services.demo_service import ensure_demo_account
 from app.utils.logging import configure_logging, get_logger
 import app.utils.redis as _redis_utils
 
@@ -23,7 +25,20 @@ settings = get_settings()
 configure_logging(settings.ENVIRONMENT)
 log = get_logger(__name__)
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Creates or resets the public demo account when one is configured. A failure here
+    # must not take the service down, so it's logged and startup carries on.
+    try:
+        async with AsyncSessionLocal() as db:
+            await ensure_demo_account(db)
+    except Exception as exc:  # noqa: BLE001
+        log.error("demo_account_failed", exc_info=exc)
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Auth Service",
     version="1.0.0",
     description="Standalone authentication microservice for ApplyLuma, Rostid, and future apps.",

@@ -6,6 +6,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.utils.security import hash_password, verify_password
 import app.utils.redis as _redis_utils
+from app.services.demo_service import is_demo_email
 
 log = structlog.get_logger()
 
@@ -36,13 +37,16 @@ async def register_user(data: UserCreate, db: AsyncSession) -> User:
 async def authenticate_user(email: str, password: str, db: AsyncSession) -> User | None:
     r = await _redis_utils.get_redis()
     key = _lockout_key(email)
-    attempts = await r.incr(key)
-    if attempts == 1:
-        await r.expire(key, _LOCKOUT_SECONDS)
+    # The demo account's password is public, so a lockout would only let one visitor
+    # lock everyone else out of the demo. The per-IP rate limit still applies to it.
+    if not is_demo_email(email):
+        attempts = await r.incr(key)
+        if attempts == 1:
+            await r.expire(key, _LOCKOUT_SECONDS)
 
-    if attempts > _MAX_ATTEMPTS:
-        log.warning("audit.login_locked", email=email, attempts=attempts)
-        return None  # locked — treat same as wrong credentials
+        if attempts > _MAX_ATTEMPTS:
+            log.warning("audit.login_locked", email=email, attempts=attempts)
+            return None  # locked — treat same as wrong credentials
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()

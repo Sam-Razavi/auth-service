@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "noreply@yourdomain.com"
 
     APP_URL: str = "http://localhost:8001"
+
+    # A public demo account (see app/services/demo_service.py). Off when either is empty.
+    DEMO_ACCOUNT_EMAIL: str = ""
+    DEMO_ACCOUNT_PASSWORD: str = ""
     ENVIRONMENT: str = "development"
     ALLOWED_ORIGINS: list[str] = ["*"]
 
